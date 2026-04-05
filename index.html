@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alloso Sales Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg: #0a0f1e;
+  --surface: #111827;
+  --surface2: #1a2234;
+  --border: #1f2d44;
+  --accent: #3b82f6;
+  --accent2: #10b981;
+  --accent3: #f59e0b;
+  --accent4: #8b5cf6;
+  --danger: #ef4444;
+  --text: #f1f5f9;
+  --muted: #64748b;
+  --offline: #3b82f6;
+  --online: #10b981;
+  --as: #f59e0b;
+  --fursys: #8b5cf6;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans KR', sans-serif;
+  min-height: 100vh;
+}
+
+/* ── 헤더 ── */
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0.875rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.logo span { color: var(--accent); }
+.sync-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+.sync-btn:hover { opacity: 0.85; }
+.sync-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── 탭 네비 ── */
+.tab-nav {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tab-nav::-webkit-scrollbar { display: none; }
+.tab-item {
+  flex: none;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.tab-item.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ── 컨텐츠 ── */
+.content { padding: 1.25rem; max-width: 1200px; margin: 0 auto; }
+
+.view { display: none; }
+.view.active { display: block; }
+
+/* ── 월 선택 ── */
+.month-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+.month-selector label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.month-select {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.month-select:focus { outline: 2px solid var(--accent); }
+
+/* ── 채널 컬러 뱃지 ── */
+.ch { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.75rem; font-weight: 600; }
+.ch::before { content: ''; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.ch.offline::before { background: var(--offline); }
+.ch.online::before { background: var(--online); }
+.ch.as::before { background: var(--as); }
+.ch.fursys::before { background: var(--fursys); }
+
+/* ── 요약 카드 ── */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+@media (min-width: 640px) {
+  .summary-grid { grid-template-columns: repeat(3, 1fr); }
+}
+.sum-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+}
+.sum-card-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.sum-card-label::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+}
+.sum-card.offline .sum-card-label::before { background: var(--offline); }
+.sum-card.online .sum-card-label::before { background: var(--online); }
+.sum-card.as .sum-card-label::before { background: var(--as); }
+.sum-card.fursys .sum-card-label::before { background: var(--fursys); }
+.sum-card-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-family: 'DM Mono', monospace;
+}
+.sum-card.offline .sum-card-value { color: var(--offline); }
+.sum-card.online .sum-card-value { color: var(--online); }
+.sum-card.as .sum-card-value { color: var(--as); }
+.sum-card.fursys .sum-card-value { color: var(--fursys); }
+.sum-card-sub {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+
+/* ── 월 합계 바 ── */
+.total-bar {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.total-bar-label { font-size: 0.85rem; color: var(--muted); }
+.total-bar-value { font-size: 1.25rem; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text); }
+
+/* ── 일별 테이블 ── */
+.table-wrap {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  min-width: 500px;
+}
+thead { background: var(--surface2); }
+th {
+  padding: 0.75rem 0.875rem;
+  text-align: right;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+th:first-child { text-align: left; }
+td {
+  padding: 0.65rem 0.875rem;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.8rem;
+}
+td:first-child {
+  text-align: left;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 500;
+  color: var(--text);
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* 주합계 행 */
+tr.week-sum td {
+  background: rgba(59,130,246,0.07);
+  color: var(--muted);
+  font-size: 0.75rem;
+  padding: 0.5rem 0.875rem;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+tr.week-sum td:first-child { color: var(--accent); font-family: 'Noto Sans KR', sans-serif; }
+
+/* 월합계 행 */
+tr.month-sum td {
+  background: rgba(59,130,246,0.12);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.875rem;
+  border-top: 2px solid var(--accent);
+}
+tr.month-sum td:first-child { color: var(--accent); font-family: 'Noto Sans KR', sans-serif; }
+
+/* 값 없을 때 */
+.empty-val { color: var(--border); font-family: 'DM Mono', monospace; }
+
+/* ── 로딩 ── */
+.loading {
+  text-align: center;
+  padding: 3rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ── 상태바 ── */
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: var(--surface2);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex-shrink: 0;
+}
+.status-dot.connected { background: var(--accent2); }
+
+/* ── 모바일 ── */
+@media (max-width: 640px) {
+  .header { padding: 0.75rem 1rem; }
+  .content { padding: 1rem; }
+  .sum-card-value { font-size: 0.95rem; }
+  #view-analysis > div:nth-child(3),
+  #view-analysis > div:nth-child(4) {
+    grid-template-columns: 1fr !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- ── 헤더 ── -->
+<header class="header">
+  <div class="logo">🛋 <span>Alloso</span> Sales</div>
+  <button class="sync-btn" onclick="syncData()" id="syncBtn">🔄 ERP 연동</button>
+</header>
+
+<!-- ── 탭 네비 ── -->
+<nav class="tab-nav">
+  <div class="tab-item active" onclick="switchTab('daily', this)">📊 일별 상세</div>
+  <div class="tab-item" onclick="switchTab('monthly', this)">📅 월별 실적</div>
+  <div class="tab-item" onclick="switchTab('analysis', this)">🔍 분석</div>
+</nav>
+
+<div class="content">
+
+  <!-- ── 상태바 ── -->
+  <div class="status-bar">
+    <span class="status-dot" id="statusDot"></span>
+    <span id="statusText">연동 전 — ERP 연동하기를 눌러주세요</span>
+  </div>
+
+  <!-- ═══════════════════════════
+       TAB 1: 월별 실적
+  ═══════════════════════════ -->
+  <div id="view-monthly" class="view">
+
+    <div class="month-selector">
+      <label>월 선택</label>
+      <select class="month-select" id="monthSelect" onchange="renderMonthly()">
+        <!-- JS로 채움 -->
+      </select>
+    </div>
+
+    <!-- 요약 카드 -->
+    <div class="summary-grid">
+      <div class="sum-card offline">
+        <div class="sum-card-label">알로소 오프라인</div>
+        <div class="sum-card-value" id="sumOffline">-</div>
+        <div class="sum-card-sub" id="subOffline"></div>
+      </div>
+      <div class="sum-card online">
+        <div class="sum-card-label">온라인</div>
+        <div class="sum-card-value" id="sumOnline">-</div>
+        <div class="sum-card-sub" id="subOnline"></div>
+      </div>
+      <div class="sum-card fursys">
+        <div class="sum-card-label">퍼시스</div>
+        <div class="sum-card-value" id="sumFursys">-</div>
+        <div class="sum-card-sub" id="subFursys"></div>
+      </div>
+    </div>
+
+    <!-- 월 총합 -->
+    <div class="total-bar">
+      <span class="total-bar-label" id="totalBarLabel">월 합계</span>
+      <span class="total-bar-value" id="totalBarValue">-</span>
+    </div>
+
+    <!-- 일별 테이블 -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>날짜</th>
+            <th style="color:var(--offline)">오프라인</th>
+            <th style="color:var(--online)">온라인</th>
+            <th style="color:var(--fursys)">퍼시스</th>
+            <th>일 합계</th>
+          </tr>
+        </thead>
+        <tbody id="monthlyBody">
+          <tr><td colspan="6" class="loading">ERP 연동 후 데이터가 표시됩니다</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════
+       TAB 2: 일별 상세
+  ═══════════════════════════ -->
+  <div id="view-daily" class="view active">
+
+    <div class="month-selector">
+      <label>날짜 선택</label>
+      <input type="date" class="month-select" id="dateSelect" onchange="renderDaily()">
+    </div>
+
+    <!-- 매장별 합산 -->
+    <div id="dailyStoreSummary" style="margin-bottom:1rem;display:none;">
+      <div style="font-size:0.78rem;font-weight:600;color:var(--muted);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.05em;">📍 매장별 합산</div>
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;" id="dailyStoreCards"></div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="text-align:left">수주건명</th>
+            <th style="text-align:left">매장</th>
+            <th style="text-align:left">채널</th>
+            <th style="text-align:left">세트/색상/시리즈</th>
+            <th>확정납기</th>
+            <th>금액</th>
+            <th>상담내역</th>
+          </tr>
+        </thead>
+        <tbody id="dailyBody">
+          <tr><td colspan="6" class="loading">날짜를 선택해주세요</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════
+       TAB 3: 분석
+  ═══════════════════════════ -->
+  <div id="view-analysis" class="view">
+    <div class="month-selector">
+      <label>월 선택</label>
+      <select class="month-select" id="analysisMonthSelect" onchange="renderAnalysis()">
+      </select>
+    </div>
+
+    <!-- 매장별 합산 -->
+    <div style="margin-bottom:1.5rem;">
+      <div style="font-size:0.85rem;font-weight:600;color:var(--muted);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">
+        📍 매장별 수주금액
+      </div>
+      <div style="overflow-x:auto;border-radius:12px;border:1px solid var(--border);">
+        <table style="width:100%;border-collapse:collapse;font-size:0.82rem;min-width:400px;">
+          <thead style="background:var(--surface2);">
+            <tr>
+              <th style="padding:0.75rem;text-align:left;color:var(--muted);font-weight:500;font-size:0.75rem;border-bottom:1px solid var(--border);">매장</th>
+              <th style="padding:0.75rem;text-align:left;color:var(--muted);font-weight:500;font-size:0.75rem;border-bottom:1px solid var(--border);">채널</th>
+              <th style="padding:0.75rem;text-align:right;color:var(--muted);font-weight:500;font-size:0.75rem;border-bottom:1px solid var(--border);">금액</th>
+              <th style="padding:0.75rem;border-bottom:1px solid var(--border);min-width:120px;"></th>
+            </tr>
+          </thead>
+          <tbody id="storeAnalysisBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 마감재별 / 색상별 차트 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:1rem;">
+        <div style="font-size:0.8rem;font-weight:600;color:var(--muted);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">🧵 마감재별</div>
+        <canvas id="materialChart" height="250"></canvas>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:1rem;">
+        <div style="font-size:0.8rem;font-weight:600;color:var(--muted);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">🎨 시리즈별</div>
+        <canvas id="seriesChart" height="250"></canvas>
+      </div>
+    </div>
+
+    <!-- 일별 추이 차트 -->
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1.5rem;">
+      <div style="font-size:0.8rem;font-weight:600;color:var(--muted);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">📈 채널별 일별 추이</div>
+      <canvas id="dailyTrendChart" height="160"></canvas>
+    </div>
+
+    <!-- 채널별 파이 차트 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:1rem;">
+        <div style="font-size:0.8rem;font-weight:600;color:var(--muted);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">🥧 채널 비중</div>
+        <canvas id="channelPieChart" height="200"></canvas>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:1rem;">
+        <div style="font-size:0.8rem;font-weight:600;color:var(--muted);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">🏆 TOP 5 매장</div>
+        <canvas id="top5Chart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── 상담내역 모달 ── -->
+<div id="noteModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#1a2234;border:1px solid #1f2d44;border-radius:16px;padding:1.5rem;width:90%;max-width:500px;max-height:80vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;">
+      <div>
+        <div style="font-size:0.7rem;color:#64748b;margin-bottom:0.25rem;">수주번호</div>
+        <div id="modalOrderNo" style="font-family:'DM Mono',monospace;font-size:0.85rem;color:#f1f5f9;"></div>
+      </div>
+      <button onclick="closeNoteModal()" style="background:none;border:none;color:#64748b;font-size:1.25rem;cursor:pointer;padding:0.25rem;">✕</button>
+    </div>
+    <div id="modalOrderInfo" style="background:#0a0f1e;border-radius:8px;padding:0.75rem;margin-bottom:1rem;font-size:0.82rem;color:#94a3b8;line-height:1.6;"></div>
+    <div style="margin-bottom:0.5rem;">
+      <label style="font-size:0.78rem;color:#64748b;font-weight:600;">📝 상담 내역</label>
+    </div>
+    <textarea id="noteInput" placeholder="고객과의 상담 내용, 특이사항을 기재해주세요..." 
+      style="width:100%;min-height:120px;background:#0a0f1e;border:1px solid #1f2d44;border-radius:8px;color:#f1f5f9;padding:0.75rem;font-size:0.85rem;font-family:inherit;resize:vertical;outline:none;"
+      onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#1f2d44'"></textarea>
+    <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
+      <button onclick="saveNote()" style="flex:1;background:#3b82f6;color:white;border:none;border-radius:8px;padding:0.65rem;font-weight:600;cursor:pointer;font-family:inherit;font-size:0.85rem;">저장</button>
+      <button onclick="closeNoteModal()" style="background:#1f2d44;color:#94a3b8;border:none;border-radius:8px;padding:0.65rem 1rem;cursor:pointer;font-family:inherit;font-size:0.85rem;">닫기</button>
+    </div>
+    <div id="noteSavedAt" style="font-size:0.72rem;color:#64748b;margin-top:0.5rem;text-align:right;"></div>
+  </div>
+</div>
+
+<!-- ── Firebase SDK (기존 유지) ── -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+<script>
+// ══════════════════════════════════════════
+// ▶ API 설정 - URL만 바꾸면 서버 전환 완료
+const ERP_API_URL = "https://script.google.com/macros/s/AKfycbx7LO9-uAF_0pqtsMduFGmXsjYPgGQmmMvqFJwyr_0rE_al5H76zeO2OLPmfGX63lk2mA/exec";
+// ══════════════════════════════════════════
+
+// ── Firebase 초기화 (매니저 메모용) ──
+const firebaseConfig = {
+    apiKey: "AIzaSyBD1UInWTrMyXg1OW8t-mwjpa0KIYsAdoc",
+    authDomain: "erp-sales-data.firebaseapp.com",
+    projectId: "erp-sales-data",
+    storageBucket: "erp-sales-data.firebasestorage.app",
+    messagingSenderId: "165363176377",
+    appId: "1:165363176377:web:434f637d1baed28e665c68"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const NOTES_COLLECTION = "manager_notes";
+
+// ── 상태 ──
+let erpData = []; // 전체 ERP 데이터
+let lastSync = null;
+let notesCache = {}; // 수주번호키 → 메모 캐시
+let currentNoteKey = null; // 현재 열린 모달의 수주번호키
+
+// ── 유틸 ──
+function fmt(n) {
+  if (!n || n === 0) return '';
+  return Number(n).toLocaleString('ko-KR');
+}
+function fmtFull(n) {
+  return Number(n || 0).toLocaleString('ko-KR');
+}
+
+function classify(record) {
+  // 스프레드시트 RAW 데이터: 사업소 필드 사용
+  const sabso = (record['사업소'] || record['실적사업소'] || record.sabso || '').toString().trim();
+  const store  = (record['대리점'] || record.store || '').toString().trim();
+  const val = sabso || store;
+  if (val.includes('알로소')) return 'offline';
+  if (val.includes('온라인')) return 'online';
+  if (val.includes('하자조치내수') || val.includes('하자')) return 'as';
+  if (['온라인','네이버','알로소몰','lg전자','cj','29cm'].some(k => store.toLowerCase().includes(k))) return 'online';
+  return 'fursys';
+}
+
+function getAmount(r) {
+  // 스프레드시트 RAW: 수주단가*수량 사용
+  const amtStr = (r['수주단가*수량'] || r['수주금액'] || r.amount || '0').toString().replace(/,/g,'');
+  return Math.round(parseFloat(amtStr) || 0);
+}
+
+function getDate(r) {
+  // 스프레드시트 RAW: 수주일자 사용
+  const d = (r['수주일자'] || r.date || '').toString().trim();
+  // 엑셀 시리얼 숫자 변환
+  if (/^\d+(\.\d+)?$/.test(d) && parseFloat(d) > 1000) {
+    const base = new Date(1899, 11, 30);
+    const dt = new Date(base.getTime() + parseFloat(d) * 86400000);
+    return dt.toISOString().substring(0, 10);
+  }
+  return d.substring(0, 10);
+}
+
+// ── 탭 전환 ──
+function switchTab(name, el) {
+  document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('view-' + name).classList.add('active');
+  if (name === 'analysis' && erpData.length) renderAnalysis();
+}
+
+// ── ERP 연동 ──
+async function syncData() {
+  const btn = document.getElementById('syncBtn');
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  btn.disabled = true;
+  btn.textContent = '⏳ 로딩 중...';
+  txt.textContent = '데이터 불러오는 중...';
+
+  try {
+    const resp = await fetch(ERP_API_URL);
+    if (!resp.ok) throw new Error('서버 오류 ' + resp.status);
+    const json = await resp.json();
+    const raw = json.data || [];
+
+    // 데이터 변환
+    erpData = raw
+      .filter(r => {
+        const store = (r['대리점'] || r.store || '').toString();
+        const sabso = (r['사업소'] || r['실적사업소'] || '').toString();
+        if (store.includes('바로스양지') || store.includes('의자생산팀')) return false;
+        if (store.toUpperCase() === 'AS' || store.includes('하자조치')) return false;
+        if (sabso.includes('하자조치내수') || sabso.includes('하자')) return false;
+        return true;
+      })
+      .map((r, i) => ({
+        ...r,
+        _date: getDate(r),
+        _channel: classify(r),
+        _amount: getAmount(r)
+      }))
+      .filter(r => r._date && r._amount !== 0);
+
+    lastSync = new Date();
+    dot.classList.add('connected');
+    txt.textContent = `연동 완료 · ${fmtFull(erpData.length)}건 · ${lastSync.toLocaleString('ko-KR')}`;
+
+    initMonthSelect();
+    renderMonthly();
+
+    // 분석 탭 월 드롭다운도 동기화
+    const asel = document.getElementById('analysisMonthSelect');
+    asel.innerHTML = document.getElementById('monthSelect').innerHTML;
+    asel.value = document.getElementById('monthSelect').value;
+
+    // 오늘 날짜로 일별 탭 설정
+    const today = new Date().toISOString().substring(0,10);
+    document.getElementById('dateSelect').value = today;
+
+  } catch(e) {
+    txt.textContent = '연동 실패: ' + e.message;
+    alert('연동 실패: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔄 ERP 연동';
+  }
+}
+
+// ── 월 드롭다운 초기화 ──
+function initMonthSelect() {
+  const dates = [...new Set(erpData.map(r => r._date.substring(0,7)))].sort();
+  const sel = document.getElementById('monthSelect');
+  sel.innerHTML = '';
+  dates.forEach(ym => {
+    const [y, m] = ym.split('-');
+    const opt = document.createElement('option');
+    opt.value = ym;
+    opt.textContent = `${y}년 ${parseInt(m)}월`;
+    sel.appendChild(opt);
+  });
+  // 최신 월 선택
+  if (dates.length) sel.value = dates[dates.length - 1];
+}
+
+// ── 월별 실적 렌더링 ──
+function renderMonthly() {
+  const ym = document.getElementById('monthSelect').value;
+  if (!ym || !erpData.length) return;
+  const [year, month] = ym.split('-').map(Number);
+
+  // 해당 월 데이터 필터
+  const monthData = erpData.filter(r => r._date.startsWith(ym));
+
+  // 일별 집계
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const daily = {};
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${ym}-${String(d).padStart(2,'0')}`;
+    daily[ds] = { offline:0, online:0, as:0, fursys:0 };
+  }
+  monthData.forEach(r => {
+    if (daily[r._date]) {
+      daily[r._date][r._channel] += r._amount;
+    }
+  });
+
+  // 월 합계
+  let totOff=0, totOn=0, totAs=0, totFur=0;
+  monthData.forEach(r => {
+    if (r._channel === 'offline') totOff += r._amount;
+    else if (r._channel === 'online') totOn += r._amount;
+    else if (r._channel === 'as') totAs += r._amount;
+    else totFur += r._amount;
+  });
+  const grandTotal = totOff + totOn + totFur;
+
+  // 요약 카드 업데이트
+  document.getElementById('sumOffline').textContent = totOff ? fmtFull(totOff) : '-';
+  document.getElementById('sumOnline').textContent  = totOn  ? fmtFull(totOn)  : '-';
+  document.getElementById('sumFursys').textContent  = totFur ? fmtFull(totFur) : '-';
+
+  const pct = (v) => grandTotal ? Math.round(v/grandTotal*100) + '%' : '-';
+  document.getElementById('subOffline').textContent = pct(totOff);
+  document.getElementById('subOnline').textContent  = pct(totOn);
+  document.getElementById('subFursys').textContent  = pct(totFur);
+
+  document.getElementById('totalBarLabel').textContent = `${month}월 합계`;
+  document.getElementById('totalBarValue').textContent = fmtFull(grandTotal) + '원';
+
+  // 테이블 렌더링
+  const tbody = document.getElementById('monthlyBody');
+  tbody.innerHTML = '';
+
+  // 주차별 그룹 (월~일 기준: 일요일에 주합계)
+  let weekOff=0, weekOn=0, weekFur=0;
+  let weekNum = 0;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${ym}-${String(d).padStart(2,'0')}`;
+    const dow = new Date(year, month-1, d).getDay(); // 0=Sun, 1=Mon...6=Sat
+    const t = daily[ds];
+    const daySum = t.offline + t.online + t.fursys;
+
+    const dayNames = ['일','월','화','수','목','금','토'];
+    const dayName = dayNames[dow];
+    const isSun = dow === 0;
+    const isSat = dow === 6;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:${isSun ? '#ef4444' : isSat ? '#f87171' : 'var(--text)'}">
+        ${d}일 (${dayName})
+      </td>
+      <td style="color:${t.offline ? 'var(--offline)' : ''}">
+        ${t.offline ? fmt(t.offline) : '<span class="empty-val">—</span>'}
+      </td>
+      <td style="color:${t.online ? 'var(--online)' : ''}">
+        ${t.online ? fmt(t.online) : '<span class="empty-val">—</span>'}
+      </td>
+      <td style="color:${t.fursys ? 'var(--fursys)' : ''}">
+        ${t.fursys ? fmt(t.fursys) : '<span class="empty-val">—</span>'}
+      </td>
+      <td style="font-weight:600;color:${daySum ? 'var(--text)' : ''}">
+        ${daySum ? fmt(daySum) : '<span class="empty-val">—</span>'}
+      </td>
+    `;
+    tbody.appendChild(tr);
+
+    weekOff += t.offline; weekOn += t.online; weekFur += t.fursys;
+
+    // 일요일이거나 말일이면 주합계 행 삽입
+    const isLastDay = d === daysInMonth;
+    if (isSun || isLastDay) {
+      weekNum++;
+      const weekTotal = weekOff + weekOn + weekFur;
+      const wr = document.createElement('tr');
+      wr.className = 'week-sum';
+      wr.innerHTML = `
+        <td>${weekNum}주차 합계</td>
+        <td>${weekOff ? fmt(weekOff) : '—'}</td>
+        <td>${weekOn  ? fmt(weekOn)  : '—'}</td>
+        <td>${weekFur ? fmt(weekFur) : '—'}</td>
+        <td style="font-weight:700">${weekTotal ? fmt(weekTotal) : '—'}</td>
+      `;
+      tbody.appendChild(wr);
+      weekOff=0; weekOn=0; weekFur=0;
+    }
+  }
+
+  const mr = document.createElement('tr');
+  mr.className = 'month-sum';
+  mr.innerHTML = `
+    <td>${month}월 합계</td>
+    <td style="color:var(--offline)">${fmt(totOff) || '—'}</td>
+    <td style="color:var(--online)">${fmt(totOn)  || '—'}</td>
+    <td style="color:var(--fursys)">${fmt(totFur)  || '—'}</td>
+    <td>${fmt(grandTotal) || '—'}</td>
+  `;
+  tbody.appendChild(mr);
+}
+
+// ── 일별 상세 렌더링 ──
+function getOrderKey(orderNo) {
+  // 수주번호 뒤 2자리 제거 → 고유 키
+  if (!orderNo) return null;
+  const s = orderNo.toString().trim();
+  return s.length > 2 ? s.slice(0, -2) : s;
+}
+
+async function renderDaily() {
+  const ds = document.getElementById('dateSelect').value;
+  if (!ds || !erpData.length) return;
+
+  const dayData = erpData.filter(r => r._date === ds);
+  const tbody = document.getElementById('dailyBody');
+
+  if (!dayData.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="loading">${ds} 데이터 없음</td></tr>`;
+    return;
+  }
+
+  const chName  = { offline:'오프라인', online:'온라인', as:'AS', fursys:'퍼시스' };
+  const chColor = { offline:'var(--offline)', online:'var(--online)', as:'var(--as)', fursys:'var(--fursys)' };
+
+  // 수주번호 기준 합산
+  const grouped = {};
+  dayData.forEach(r => {
+    const key = getOrderKey(r['수주번호']);
+    if (!key) return;
+    if (!grouped[key]) {
+      grouped[key] = { ...r, _amount: 0, _items: [] };
+    }
+    grouped[key]._amount += r._amount;
+    grouped[key]._items.push(r);
+  });
+
+  const groupedList = Object.values(grouped).sort((a,b) => a._channel.localeCompare(b._channel));
+
+  // Firebase에서 메모 일괄 로드
+  const keys = groupedList.map(g => getOrderKey(g['수주번호'])).filter(Boolean);
+  try {
+    for (const key of keys) {
+      if (!notesCache[key]) {
+        const doc = await db.collection(NOTES_COLLECTION).doc(key).get();
+        if (doc.exists) notesCache[key] = doc.data();
+      }
+    }
+  } catch(e) { console.warn("메모 로드 실패:", e); }
+
+  tbody.innerHTML = '';
+  let total = 0;
+
+  // 매장별 합산 렌더링
+  const storeSum = {};
+  groupedList.forEach(r => {
+    const store = r['대리점'] || '-';
+    if (!storeSum[store]) storeSum[store] = { amount: 0, channel: r._channel };
+    storeSum[store].amount += r._amount;
+  });
+  const sortedStores = Object.entries(storeSum).sort((a,b) => b[1].amount - a[1].amount);
+  const storeCards = document.getElementById('dailyStoreCards');
+  const storeSummary = document.getElementById('dailyStoreSummary');
+  if (storeCards && sortedStores.length) {
+    storeSummary.style.display = 'block';
+    const chColor = { offline:'var(--offline)', online:'var(--online)', fursys:'var(--fursys)', as:'var(--as)' };
+    storeCards.innerHTML = sortedStores.map(([store, info]) => `
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.75rem;min-width:120px;">
+        <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.2rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px;" title="${store}">${store}</div>
+        <div style="font-size:0.85rem;font-weight:700;color:${chColor[info.channel]||'var(--text)'};font-family:'DM Mono',monospace;">${fmtFull(info.amount)}</div>
+      </div>
+    `).join('');
+  }
+
+  groupedList.forEach(r => {
+    total += r._amount;
+    const ch = r._channel;
+    const key = getOrderKey(r['수주번호']);
+    const note = notesCache[key];
+    const hasNote = note && note.text;
+    const productInfo = [r['세트코드'], r['색상'], r['시리즈구분']].filter(v=>v&&v.trim()).join(' / ');
+
+    const tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
+    tr.onclick = () => openNoteModal(key, r);
+    tr.innerHTML = `
+      <td title="${r['수주건명'] || ''}" style="text-align:left;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        ${r['수주건명'] || '-'}
+      </td>
+      <td style="text-align:left;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        ${r['대리점'] || '-'}
+      </td>
+      <td style="text-align:left;color:${chColor[ch]};font-weight:600;font-size:0.78rem">
+        ${chName[ch]}
+      </td>
+      <td title="${productInfo}" style="text-align:left;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:0.75rem">
+        ${productInfo || '-'}
+      </td>
+      <td style="color:var(--muted);font-size:0.78rem">${r['확정납기'] || '-'}</td>
+      <td style="color:${r._amount < 0 ? 'var(--danger)' : 'var(--text)'};font-weight:600">
+        ${r._amount < 0 ? '(' + fmt(-r._amount) + ')' : fmt(r._amount)}
+      </td>
+      <td style="text-align:center;">
+        <span style="font-size:0.75rem;padding:0.2rem 0.5rem;border-radius:6px;
+          background:${hasNote ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)'};
+          color:${hasNote ? '#10b981' : '#475569'};
+          border:1px solid ${hasNote ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.08)'};">
+          ${hasNote ? '📝 있음' : '+ 기재'}
+        </span>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const sr = document.createElement('tr');
+  sr.className = 'month-sum';
+  sr.innerHTML = `
+    <td colspan="6">${ds} 합계 (${groupedList.length}건 / 단품 ${dayData.length}개)</td>
+    <td>${fmt(total)}</td>
+  `;
+  tbody.appendChild(sr);
+}
+
+// ── 메모 모달 ──
+function openNoteModal(key, r) {
+  currentNoteKey = key;
+  const note = notesCache[key];
+  document.getElementById('modalOrderNo').textContent = r['수주번호'] || key;
+  document.getElementById('modalOrderInfo').innerHTML = `
+    <b>${r['수주건명'] || '-'}</b><br>
+    매장: ${r['대리점'] || '-'} &nbsp;|&nbsp; 확정납기: ${r['확정납기'] || '-'}<br>
+    제품: ${[r['세트코드'], r['색상'], r['시리즈구분']].filter(v=>v&&v.trim()).join(' / ') || '-'}
+  `;
+  document.getElementById('noteInput').value = note ? (note.text || '') : '';
+  document.getElementById('noteSavedAt').textContent = note ? '최종 저장: ' + (note.updatedAt || '') : '';
+  const modal = document.getElementById('noteModal');
+  modal.style.display = 'flex';
+}
+
+function closeNoteModal() {
+  document.getElementById('noteModal').style.display = 'none';
+  currentNoteKey = null;
+}
+
+async function saveNote() {
+  if (!currentNoteKey) return;
+  const text = document.getElementById('noteInput').value.trim();
+  const now = new Date().toLocaleString('ko-KR');
+  try {
+    await db.collection(NOTES_COLLECTION).doc(currentNoteKey).set({
+      text, updatedAt: now, orderKey: currentNoteKey
+    });
+    notesCache[currentNoteKey] = { text, updatedAt: now };
+    document.getElementById('noteSavedAt').textContent = '최종 저장: ' + now;
+    // 테이블 새로고침
+    renderDaily();
+    alert('저장되었습니다!');
+  } catch(e) {
+    alert('저장 실패: ' + e.message);
+  }
+}
+
+// 모달 외부 클릭 시 닫기
+document.getElementById('noteModal').addEventListener('click', function(e) {
+  if (e.target === this) closeNoteModal();
+});
+
+// ── 마감재 코드 → 마감재명 매핑 ──
+const MATERIAL_MAP = {
+  // 가죽
+  'L74': '소프트토넬로', 'L84': '소프트프리모',
+  'L73': '드리밍헤비', 'L82': '르아테',
+  'L75': '베지탄', 'L83': '단테',
+  'L71': '머테리얼', 'L78': '볼테라',
+  'L81': '브리오',
+  // 패브릭 (코드 앞 2자리)
+  '2Z': '노르딕', '3K': '솔라',
+  '4L': '아크레', '4V': '스칼렛', '4M': '루소',
+  '3N': '라리오', '5V': '릴레이트',
+  '5E': '부클레위브', '4S': '부클레',
+  '3Q': '테사', 'KV': '크바드라트',
+  '3L': '브렘보', '3M': '토카이',
+  '3T': '칸코', '2W': '까사',
+  '3E': '쿼레이', '2X': '페임',
+};
+
+function getMaterialName(colorCode) {
+  if (!colorCode) return '기타';
+  const c = colorCode.toString().trim().toUpperCase();
+  // 3자리 L코드 (L73x, L84x 등)
+  const l3 = c.substring(0, 3);
+  if (MATERIAL_MAP[l3]) return MATERIAL_MAP[l3];
+  // 2자리 코드
+  const p2 = c.substring(0, 2);
+  if (MATERIAL_MAP[p2]) return MATERIAL_MAP[p2];
+  return '기타';
+}
+
+// ── 차트 인스턴스 관리 ──
+const chartInstances = {};
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+// ── 분석 탭 렌더링 ──
+function renderAnalysis() {
+  const ym = document.getElementById('analysisMonthSelect').value;
+  if (!ym || !erpData.length) return;
+
+  const [year, month] = ym.split('-').map(Number);
+  const monthData = erpData.filter(r => r._date.startsWith(ym));
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const chartColors = ['#3b82f6','#10b981','#8b5cf6','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16','#f97316','#a855f7'];
+
+  // ① 매장별 합산
+  const storeMap = {};
+  monthData.forEach(r => {
+    const store = r['대리점'] || '-';
+    if (!storeMap[store]) storeMap[store] = { amount: 0, channel: r._channel };
+    storeMap[store].amount += r._amount;
+  });
+  const sortedStores = Object.entries(storeMap).sort((a,b) => b[1].amount - a[1].amount);
+  const maxStore = sortedStores[0]?.[1].amount || 1;
+
+  const chName  = { offline:'오프라인', online:'온라인', fursys:'퍼시스' };
+  const chColor = { offline:'var(--offline)', online:'var(--online)', fursys:'var(--fursys)' };
+
+  const storeBody = document.getElementById('storeAnalysisBody');
+  storeBody.innerHTML = '';
+  sortedStores.forEach(([store, info]) => {
+    const pct = Math.round(info.amount / maxStore * 100);
+    const ch = info.channel;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="padding:0.6rem 0.75rem;border-bottom:1px solid var(--border);font-weight:500;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${store}</td>
+      <td style="padding:0.6rem 0.75rem;border-bottom:1px solid var(--border);color:${chColor[ch]||'var(--muted)'};font-size:0.75rem;font-weight:600">${chName[ch]||ch}</td>
+      <td style="padding:0.6rem 0.75rem;border-bottom:1px solid var(--border);text-align:right;font-family:'DM Mono',monospace;font-size:0.8rem">${fmtFull(info.amount)}</td>
+      <td style="padding:0.6rem 0.75rem;border-bottom:1px solid var(--border);">
+        <div style="background:var(--border);border-radius:4px;height:6px;overflow:hidden;">
+          <div style="background:${chColor[ch]||'var(--accent)'};height:100%;width:${pct}%;border-radius:4px;transition:width 0.5s;"></div>
+        </div>
+      </td>
+    `;
+    storeBody.appendChild(tr);
+  });
+
+  // ② 마감재별 차트
+  const matMap = {};
+  monthData.forEach(r => {
+    const mat = getMaterialName(r['색상']);
+    matMap[mat] = (matMap[mat] || 0) + r._amount;
+  });
+  const sortedMat = Object.entries(matMap).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  destroyChart('materialChart');
+  chartInstances['materialChart'] = new Chart(document.getElementById('materialChart'), {
+    type: 'bar',
+    data: {
+      labels: sortedMat.map(([k])=>k),
+      datasets: [{ data: sortedMat.map(([,v])=>v), backgroundColor: chartColors, borderRadius: 4 }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color:'#64748b', callback: v => v>=1e8?(v/1e8).toFixed(1)+'억':v>=1e6?(v/1e6).toFixed(0)+'백':v }, grid: { color:'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color:'#e2e8f0', font:{size:11} }, grid: { display:false } }
+      }
+    }
+  });
+
+  // ③ 시리즈별 차트
+  const seriesMap = {};
+  monthData.forEach(r => {
+    const s = (r['시리즈구분'] || '기타').trim();
+    seriesMap[s] = (seriesMap[s] || 0) + r._amount;
+  });
+  const sortedSeries = Object.entries(seriesMap).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  destroyChart('seriesChart');
+  chartInstances['seriesChart'] = new Chart(document.getElementById('seriesChart'), {
+    type: 'bar',
+    data: {
+      labels: sortedSeries.map(([k])=>k),
+      datasets: [{ data: sortedSeries.map(([,v])=>v), backgroundColor: chartColors.slice().reverse(), borderRadius: 4 }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color:'#64748b', callback: v => v>=1e8?(v/1e8).toFixed(1)+'억':v>=1e6?(v/1e6).toFixed(0)+'백':v }, grid: { color:'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color:'#e2e8f0', font:{size:11} }, grid: { display:false } }
+      }
+    }
+  });
+
+  // ④ 일별 추이 차트
+  const labels = [];
+  const offData = [], onData = [], furData = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${ym}-${String(d).padStart(2,'0')}`;
+    labels.push(d + '일');
+    const dayRecs = monthData.filter(r => r._date === ds);
+    offData.push(dayRecs.filter(r=>r._channel==='offline').reduce((s,r)=>s+r._amount,0));
+    onData.push(dayRecs.filter(r=>r._channel==='online').reduce((s,r)=>s+r._amount,0));
+    furData.push(dayRecs.filter(r=>r._channel==='fursys').reduce((s,r)=>s+r._amount,0));
+  }
+  destroyChart('dailyTrendChart');
+  chartInstances['dailyTrendChart'] = new Chart(document.getElementById('dailyTrendChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label:'오프라인', data:offData, backgroundColor:'rgba(59,130,246,0.8)', borderRadius:3 },
+        { label:'온라인',   data:onData,  backgroundColor:'rgba(16,185,129,0.8)', borderRadius:3 },
+        { label:'퍼시스',  data:furData, backgroundColor:'rgba(139,92,246,0.8)', borderRadius:3 },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color:'#e2e8f0', font:{size:11} } } },
+      scales: {
+        x: { stacked:true, ticks: { color:'#64748b', font:{size:10} }, grid: { display:false } },
+        y: { stacked:true, ticks: { color:'#64748b', callback: v => v>=1e8?(v/1e8).toFixed(1)+'억':v>=1e6?(v/1e6).toFixed(0)+'백':v }, grid: { color:'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+
+  // ⑤ 채널 파이 차트
+  const totOff = monthData.filter(r=>r._channel==='offline').reduce((s,r)=>s+r._amount,0);
+  const totOn  = monthData.filter(r=>r._channel==='online').reduce((s,r)=>s+r._amount,0);
+  const totFur = monthData.filter(r=>r._channel==='fursys').reduce((s,r)=>s+r._amount,0);
+  destroyChart('channelPieChart');
+  chartInstances['channelPieChart'] = new Chart(document.getElementById('channelPieChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['오프라인','온라인','퍼시스'],
+      datasets: [{ data:[totOff,totOn,totFur], backgroundColor:['#3b82f6','#10b981','#8b5cf6'], borderWidth:0, hoverOffset:8 }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position:'bottom', labels:{ color:'#e2e8f0', font:{size:11}, padding:12 } } }
+    }
+  });
+
+  // ⑥ TOP5 매장 차트
+  const top5 = sortedStores.slice(0,5);
+  destroyChart('top5Chart');
+  chartInstances['top5Chart'] = new Chart(document.getElementById('top5Chart'), {
+    type: 'bar',
+    data: {
+      labels: top5.map(([k])=>k),
+      datasets: [{ data:top5.map(([,v])=>v.amount), backgroundColor:chartColors, borderRadius:4 }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true,
+      plugins: { legend: { display:false } },
+      scales: {
+        x: { ticks: { color:'#64748b', callback: v => v>=1e8?(v/1e8).toFixed(1)+'억':v>=1e6?(v/1e6).toFixed(0)+'백':v }, grid: { color:'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color:'#e2e8f0', font:{size:11} }, grid: { display:false } }
+      }
+    }
+  });
+}
+
+// ── 초기화 ──
+window.addEventListener('DOMContentLoaded', () => {
+  const today = new Date().toISOString().substring(0,10);
+  document.getElementById('dateSelect').value = today;
+});
+</script>
+</body>
+</html>
